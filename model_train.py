@@ -1,3 +1,4 @@
+import sys
 from pyspark import SparkConf, SparkContext, SQLContext
 from pyexpat import model
 from pyspark.ml import Pipeline
@@ -15,11 +16,11 @@ sc = SparkContext("local", conf=conf)
 sc.setLogLevel("ERROR")
 sqlContext = SQLContext(sc)
 
-dt_trained_model_result = "s3://myprojectdataset/dt-trained.model"  #"/tmp/dt-trained.model"
-rf_trained_model_result = "s3://myprojectdataset/rf-trained.model"  #"/tmp/rf-trained.model"
-train_dataset = "s3://myprojectdataset/TrainingDataset.csv" #sys.argv[1] #"/tmp/TrainingDataset.csv"
+dt_trained_model_result = sys.argv[2]+"dt-trained.model"  
+rf_trained_model_result = sys.argv[2]+"rf-trained.model"  
+train_dataset = sys.argv[1]
 
-print("Reading data..")
+print(f"Reading data from {train_dataset} ..")
 df_training = sqlContext.read.format('com.databricks.spark.csv').options(header='true', inferschema='true', sep=';').load(train_dataset)
 
 features = df_training.columns
@@ -38,7 +39,7 @@ dt = DecisionTreeClassifier(featuresCol = 'features', labelCol = features[-1], m
 dt_Model = dt.fit(df_training)
 dt_predictions = dt_Model.transform(df_training)
 
-print("Saving the trained model to S3 bucket..")
+print(f"Saving the trained model to {dt_trained_model_result} ..")
 dt_Model.write().overwrite().save(dt_trained_model_result)
 
 print("Evaluate the trained model...")
@@ -63,7 +64,7 @@ rf = RandomForestClassifier(featuresCol = 'features', labelCol = features[-1] , 
 rf_model = rf.fit(df_training)
 predictions = rf_model.transform(df_training)
 
-print("Saving the trained model to S3 bucket..")
+print(f"Saving the trained model to {rf_trained_model_result} ..")
 rf_model.write().overwrite().save(rf_trained_model_result)
 
 print("Evaluate the trained model...")
@@ -78,6 +79,4 @@ f1score = evaluator.evaluate(predictions)
 print("F1-Score = %s" % (f1score))
 
 #print(rf_model.featureImportances)
-
-
 
