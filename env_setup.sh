@@ -17,7 +17,3 @@ sudo pip install findspark
 
 echo "Set environmental variables for Spark.."
 mv spark-3.0.0-bin-hadoop2.7 /home/ubuntu/
-
-pip install numpy
-
-pip install pandas
