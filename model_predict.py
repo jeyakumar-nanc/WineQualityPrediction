@@ -10,6 +10,10 @@ from pyspark.sql.functions import col, desc
 from pyspark.sql.types import IntegerType, DoubleType
 from pyspark.ml.classification import DecisionTreeClassifier
 
+
+if(len(sys.argv)==1):
+    raise Exception("Enter valid parameters to submit the job. Execute the job by providing proper parameters => model_predict.py <dataset location> <output path>")
+    
 #instantiate spark session
 conf = (SparkConf().setAppName("WineQuality-Prediction"))
 sc = SparkContext("local", conf=conf)
