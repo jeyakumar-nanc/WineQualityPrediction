@@ -1,3 +1,5 @@
+from pyspark import SparkConf, SparkContext, SQLContext
+from pyexpat import model
 from pyspark.ml import Pipeline
 from pyspark.ml.classification import RandomForestClassifier
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
@@ -6,37 +8,24 @@ import pandas as pd
 from pyspark.ml.feature import VectorAssembler
 from pyspark.sql.functions import col, desc
 from pyspark.sql.types import IntegerType, DoubleType
+from pyspark.ml.classification import DecisionTreeClassifier
 
 #instantiate spark session
-spark = SparkSession.builder.appName("WineQuality-Training").getOrCreate()
+conf = (SparkConf().setAppName("WineQuality-Training"))
+sc = SparkContext("local", conf=conf)
+sc.setLogLevel("ERROR")
+sqlContext = SQLContext(sc)
+
 
 train_dataset = "/tmp/TrainingDataset.csv" #"s3://myprojectdataset/TrainingDataset.csv" #sys.argv[1] #"/tmp/TrainingDataset.csv"
 
 print("Reading data..")
-df_training = spark.read.format("csv").load(train_dataset, header=True, sep=";")
-
-df_training = df_training.toDF("fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar", "chlorides", "free_sulfur_dioxide", "total_sulfur_dioxide", "density", "pH", "sulphates", "alcohol", "label")
-
-#df_training.show()
-
-pd.DataFrame(df_training.take(10), columns=df_training.columns).transpose()
-
-df_training = df_training \
-        .withColumn("fixed_acidity", col("fixed_acidity").cast(DoubleType())) \
-        .withColumn("volatile_acidity", col("volatile_acidity").cast(DoubleType())) \
-        .withColumn("citric_acid", col("citric_acid").cast(DoubleType())) \
-        .withColumn("residual_sugar", col("residual_sugar").cast(DoubleType())) \
-        .withColumn("chlorides", col("chlorides").cast(DoubleType())) \
-        .withColumn("free_sulfur_dioxide", col("free_sulfur_dioxide").cast(IntegerType())) \
-        .withColumn("total_sulfur_dioxide", col("total_sulfur_dioxide").cast(IntegerType())) \
-        .withColumn("density", col("density").cast(DoubleType())) \
-        .withColumn("pH", col("pH").cast(DoubleType())) \
-        .withColumn("sulphates", col("sulphates").cast(DoubleType())) \
-        .withColumn("alcohol", col("alcohol").cast(DoubleType())) \
-        .withColumn("label", col("label").cast(IntegerType()))
+df_training = sqlContext.read.format('com.databricks.spark.csv').options(header='true', inferschema='true', sep=';').load(train_dataset)
 
 features = df_training.columns
-features = features[:-1]
+
+features = [c for c in df_training.columns if c != 'quality'] #Drop quality column
+print(features)
 
 df_training.select(features).describe().toPandas().transpose()
 
@@ -44,26 +33,52 @@ df_training.select(features).describe().toPandas().transpose()
 va = VectorAssembler(inputCols=features, outputCol="features")
 df_training = va.transform(df_training)
 
-print("Training random forest model..")
+print("===================Decision Tree Classifier model===================")
+dt = DecisionTreeClassifier(featuresCol = 'features', labelCol = features[-1], maxDepth =2)
+dt_Model = dt.fit(df_training)
+dt_predictions = dt_Model.transform(df_training)
 
-features = df_training.columns
+print("Saving the trained model to S3 bucket..")
+dt_Model.write().overwrite().save("/tmp/dt-trained.model")
+
+print("Evaluate the trained model...")
+
+dt_evaluator = MulticlassClassificationEvaluator(labelCol='""""quality"""""', predictionCol="prediction", metricName="accuracy")
+dt_accuracy = dt_evaluator.evaluate(dt_predictions)
+print("Accuracy = %s" % (dt_accuracy))
+print("Test Error = %s" % (1.0 - dt_accuracy))
+
+dt_evaluator = MulticlassClassificationEvaluator(labelCol='""""quality"""""', predictionCol="prediction", metricName="f1")
+dt_f1score = dt_evaluator.evaluate(dt_predictions)
+print("F1-Score = %s" % (dt_f1score))
+
+
+
+print("===================Random Forest model===================")
 
 #print(features)
 
-rf = RandomForestClassifier(featuresCol = 'features', labelCol = 'label')
+rf = RandomForestClassifier(featuresCol = 'features', labelCol = features[-1] , numTrees=60, maxBins=32, maxDepth=4, seed=42)
+
 rf_model = rf.fit(df_training)
 predictions = rf_model.transform(df_training)
 
 print("Saving the trained model to S3 bucket..")
-rf_model.save("s3://winequalityproject/trained-model")
+rf_model.write().overwrite().save("/tmp/rf-trained.model")
 
 print("Evaluate the trained model...")
 
-evaluator = MulticlassClassificationEvaluator(labelCol="label", predictionCol="prediction", metricName="accuracy")
+evaluator = MulticlassClassificationEvaluator(labelCol='""""quality"""""', predictionCol="prediction", metricName="accuracy")
 accuracy = evaluator.evaluate(predictions)
 print("Accuracy = %s" % (accuracy))
 print("Test Error = %s" % (1.0 - accuracy))
 
-evaluator = MulticlassClassificationEvaluator(labelCol="label", predictionCol="prediction", metricName="f1")
+evaluator = MulticlassClassificationEvaluator(labelCol='""""quality"""""', predictionCol="prediction", metricName="f1")
 f1score = evaluator.evaluate(predictions)
 print("F1-Score = %s" % (f1score))
+
+#print(rf_model.featureImportances)
+
+
+
+
