@@ -4,7 +4,6 @@ from pyspark.ml import Pipeline
 from pyspark.ml.classification import RandomForestClassifier
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 from pyspark.sql import SparkSession
-import pandas as pd
 from pyspark.ml.feature import VectorAssembler
 from pyspark.sql.functions import col, desc
 from pyspark.sql.types import IntegerType, DoubleType
@@ -16,8 +15,9 @@ sc = SparkContext("local", conf=conf)
 sc.setLogLevel("ERROR")
 sqlContext = SQLContext(sc)
 
-
-train_dataset = "/tmp/TrainingDataset.csv" #"s3://myprojectdataset/TrainingDataset.csv" #sys.argv[1] #"/tmp/TrainingDataset.csv"
+dt_trained_model_result = "s3://myprojectdataset/dt-trained.model"  #"/tmp/dt-trained.model"
+rf_trained_model_result = "s3://myprojectdataset/rf-trained.model"  #"/tmp/rf-trained.model"
+train_dataset = "s3://myprojectdataset/TrainingDataset.csv" #sys.argv[1] #"/tmp/TrainingDataset.csv"
 
 print("Reading data..")
 df_training = sqlContext.read.format('com.databricks.spark.csv').options(header='true', inferschema='true', sep=';').load(train_dataset)
@@ -25,7 +25,7 @@ df_training = sqlContext.read.format('com.databricks.spark.csv').options(header=
 features = df_training.columns
 
 features = [c for c in df_training.columns if c != 'quality'] #Drop quality column
-print(features)
+#print(features)
 
 df_training.select(features).describe().toPandas().transpose()
 
@@ -39,7 +39,7 @@ dt_Model = dt.fit(df_training)
 dt_predictions = dt_Model.transform(df_training)
 
 print("Saving the trained model to S3 bucket..")
-dt_Model.write().overwrite().save("/tmp/dt-trained.model")
+dt_Model.write().overwrite().save(dt_trained_model_result)
 
 print("Evaluate the trained model...")
 
@@ -64,7 +64,7 @@ rf_model = rf.fit(df_training)
 predictions = rf_model.transform(df_training)
 
 print("Saving the trained model to S3 bucket..")
-rf_model.write().overwrite().save("/tmp/rf-trained.model")
+rf_model.write().overwrite().save(rf_trained_model_result)
 
 print("Evaluate the trained model...")
 
@@ -78,7 +78,6 @@ f1score = evaluator.evaluate(predictions)
 print("F1-Score = %s" % (f1score))
 
 #print(rf_model.featureImportances)
-
 
 
 
