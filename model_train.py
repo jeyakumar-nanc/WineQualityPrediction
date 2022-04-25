@@ -10,6 +10,11 @@ from pyspark.sql.functions import col, desc
 from pyspark.sql.types import IntegerType, DoubleType
 from pyspark.ml.classification import DecisionTreeClassifier
 
+
+if(len(sys.argv)==1):
+    raise Exception("Enter valid parameters to submit the job. Execute the job by providing proper parameters => model_train.py <dataset location> <output path>")
+
+
 #instantiate spark session
 conf = (SparkConf().setAppName("WineQuality-Training"))
 sc = SparkContext("local", conf=conf)
@@ -25,7 +30,7 @@ df_training = sqlContext.read.format('com.databricks.spark.csv').options(header=
 
 features = df_training.columns
 
-features = [c for c in df_training.columns if c != 'quality'] #Drop quality column
+#features = [c for c in df_training.columns if c != 'quality'] #Drop quality column
 #print(features)
 
 df_training.select(features).describe().toPandas().transpose()
@@ -79,4 +84,5 @@ f1score = evaluator.evaluate(predictions)
 print("F1-Score = %s" % (f1score))
 
 #print(rf_model.featureImportances)
+
 
