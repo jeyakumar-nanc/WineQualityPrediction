@@ -1,3 +1,4 @@
+import sys
 from pyspark import SparkConf, SparkContext, SQLContext
 from pyexpat import model
 from pyspark.ml import Pipeline
@@ -15,12 +16,12 @@ sc = SparkContext("local", conf=conf)
 sc.setLogLevel("ERROR")
 sqlContext = SQLContext(sc)
 
-dt_trained_model_result = "s3://myprojectdataset/dt-trained.model"  #"/tmp/dt-trained.model"
-rf_trained_model_result = "s3://myprojectdataset/rf-trained.model"  #"/tmp/rf-trained.model"
-rf_predicted_model_result = "s3://myprojectdataset/rf-trained.model"  #"/tmp/rf-predicted.model"
-train_dataset = "s3://myprojectdataset/ValidationDataset.csv" #sys.argv[1] #"/tmp/TrainingDataset.csv"
+dt_trained_model_result = sys.argv[2]+"dt-trained.model"  
+rf_trained_model_result = sys.argv[2]+"rf-trained.model"  
+rf_predicted_model_result = sys.argv[2]+"rf-predicted.model"
+train_dataset = sys.argv[1] 
 
-print("Reading data..")
+print(f"Reading data from {train_dataset}..")
 df_validation = sqlContext.read.format('com.databricks.spark.csv').options(header='true', inferschema='true', sep=';').load(train_dataset)
 
 features = df_validation.columns
@@ -43,7 +44,7 @@ rf_model = RandomForestClassificationModel.load(rf_trained_model_result)
 
 predictions = rf_model.transform(df_validation)
 
-print("Saving the validation results to S3 bucket..")
+print(f"Saving the trained model to {rf_predicted_model_result} ..")
 rf_model.write().overwrite().save(rf_predicted_model_result) 
 
 print("Evaluate the trained model...")
@@ -56,6 +57,5 @@ print("Test Error = %s" % (1.0 - accuracy))
 evaluator = MulticlassClassificationEvaluator(labelCol='""""quality"""""', predictionCol="prediction", metricName="f1")
 f1score = evaluator.evaluate(predictions)
 print("F1-Score = %s" % (f1score))
-
 
 
