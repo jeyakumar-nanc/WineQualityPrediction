@@ -6,5 +6,5 @@ RUN conda install -y numpy
 WORKDIR /opt/wine-quality-app
 
 COPY model_predict.py .
-ADD ValidationDataset.csv .
+ADD model/ValidationDataset.csv .
 ADD model ./model/
