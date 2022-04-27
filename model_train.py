@@ -33,7 +33,7 @@ features = df_training.columns
 #features = [c for c in df_training.columns if c != 'quality'] #Drop quality column
 #print(features)
 
-df_training.select(features).describe().toPandas().transpose()
+#df_training.select(features).describe().toPandas().transpose()
 
 
 va = VectorAssembler(inputCols=features, outputCol="features")
