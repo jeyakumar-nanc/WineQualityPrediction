@@ -164,4 +164,17 @@ docker run wine-quality-app driver model_predict.py model/ValidationDataset.csv 
 
 ![image](https://user-images.githubusercontent.com/66985675/165439578-2afcff2c-75df-4967-9509-e7f702516882.png)
 
+# Docker Hub set up and execution from my repo
+1.	Tag the built image with the repo name
+ docker tag wine-quality-app:latest jeyakumarn/wine-quality:latest
+2.	Login to docker using your credentials
+3.	Push the image to docker repo
+ docker push jeyakumarn/wine-quality:latest
 
+Docker image ls  
+4.	Run the command to pull image from your repo
+docker run jeyakumarn/wine-quality driver model_predict.py model/ValidationDataset.csv model/
+
+# Repository Links
+Docker Repo: https://hub.docker.com/repository/docker/jeyakumarn/wine-quality
+Github Repo: https://github.com/jeyakumar-nanc/WineQualityPrediction
